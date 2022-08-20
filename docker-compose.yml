@@ -1,0 +1,77 @@
+version: "3.8"
+services:
+  pgdb:
+    container_name: pgdb
+    image: postgres:13-alpine
+    ports:
+      - ${POSTGRES_PORT}:${POSTGRES_PORT}
+    volumes:
+      - ./docker/dbdata/pg:/var/lib/postgresql/data
+    networks:
+      - celerynet
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    volumes:
+      - ./docker/dbdata/pgadmin:/root/.pgadmin
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    networks:
+      - celerynet
+    depends_on:
+      - pgdb
+
+  redi:
+    #image: redis:6.2-alpine
+    container_name: redi
+    image: redis
+    ports:
+      - 6378:6379
+    #command: redis-server --save 20 1 --loglevel warning --requirepass $REDIS_PASSWORD
+    networks:
+      - celerynet
+
+  celery-app:
+    container_name: celery-app
+    build:
+      context: .
+      dockerfile: ./docker/python/Dockerfile
+    depends_on:
+      - pgdb
+    stdin_open: true
+    tty: true
+    env_file:
+      - ./.env
+    ports:
+      - ${API_PORT}:8000
+    volumes:
+      - ./app:/code/app
+    networks:
+      - celerynet
+
+  worker:
+    container_name: celery-worker
+    build:
+      context: .
+      dockerfile: ./docker/python/Dockerfile
+    command: /code/start-celeryworker
+    volumes:
+      - ./app:/code/app
+    env_file:
+      - ./.env
+    depends_on:
+      - celery-app
+      - redi
+    networks:
+      - celerynet
+
+networks:
+  celerynet:

@@ -1,0 +1,17 @@
+# Docker
+uploads/*
+
+docker/dbdata/*
+!docker/dbdata/.gitkeep 
+!docker/dbdata/pg/.gitkeep 
+!docker/dbdata/pgadmin/.gitkeep 
+
+#app
+app/__pycache__/*
+
+__pycache__/
+ *.pyc
+.env
+
+.idea/
+.vscode/
